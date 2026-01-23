@@ -9,15 +9,28 @@ const app = express();
 /**
  * CORS — MUST be explicit when using credentials
  */
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      "https://uae-survey.vercel.app",
-    ],
-    credentials: true,
-  })
-);
+app.use((req, res, next) => {
+  const allowedOrigins = [
+    "http://localhost:5173",
+    "https://uae-survey.vercel.app"
+  ];
+  
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin || '')) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '');
+  }
+  
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  
+  next();
+});
 
 app.use(express.json());
 
