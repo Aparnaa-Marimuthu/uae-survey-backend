@@ -1,15 +1,5 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-
-dotenv.config();
-
-const app = express();
-
-/**
- * CORS — MUST be explicit when using credentials
- */
-app.use((req, res, next) => {
+export default async function handler(req, res) {
+  // CORS Headers - Applied to ALL responses
   const allowedOrigins = [
     "http://localhost:5173",
     "https://uae-survey.vercel.app"
@@ -19,114 +9,101 @@ app.use((req, res, next) => {
   if (allowedOrigins.includes(origin || '')) {
     res.setHeader('Access-Control-Allow-Origin', origin || '');
   }
-  
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  
+
+  // Handle OPTIONS preflight request
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-  
-  next();
-});
-
-app.use(express.json());
-
-/**
- * LOGIN
- * Generates ThoughtSpot Trusted Auth token
- */
-app.post("/auth/login", async (req, res) => {
-  const { username, password } = req.body;
-  
-  if (!username || !password) {
-    return res.status(400).json({ error: "Username and password required" });
+    return res.status(200).end();
   }
 
-  const email = username.toLowerCase().trim();
-  if (!email.endsWith("@7dxperts.com")) {
-    return res.status(403).json({
-      error: "Only @7dxperts.com users are allowed",
-    });
-  }
+  // LOGIN - Your exact Express logic
+  if (req.method === 'POST') {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: "Username and password required" });
+    }
 
-  if (!process.env.TS_TRUSTED_AUTH_SECRET) {
-    console.error("Trusted Auth secret missing");
-    return res.status(500).json({
-      error: "Server authentication not configured",
-    });
-  }
-
-  const TS_HOST = "https://7dxperts.thoughtspot.cloud";
-  const TS_SECRET = process.env.TS_TRUSTED_AUTH_SECRET;
-
-  try {
-    // Step 1: Validate credentials with ThoughtSpot's real login API
-    console.log("Validating credentials for:", email);
-    const loginRes = await fetch(`${TS_HOST}/api/rest/2.0/auth/session/login`, {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      body: JSON.stringify({ 
-        username: email, 
-        password,
-        remember_me: false 
-      }),
-    });
-
-    if (!loginRes.ok) {
-      console.log("ThoughtSpot login failed:", loginRes.status);
-      return res.status(401).json({ 
-        error: "Invalid ThoughtSpot credentials" 
+    const email = username.toLowerCase().trim();
+    if (!email.endsWith("@7dxperts.com")) {
+      return res.status(403).json({
+        error: "Only @7dxperts.com users are allowed",
       });
     }
 
-    console.log("Credentials valid, generating trusted token");
-
-    // Step 2: Generate trusted auth token
-    const tokenRes = await fetch(`${TS_HOST}/api/rest/2.0/auth/token/full`, {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      body: JSON.stringify({
-        username: email,
-        secret_key: TS_SECRET,
-        validity_time_in_sec: 300, // 5 minutes
-      }),
-    });
-
-    if (!tokenRes.ok) {
-      console.error("Trusted token generation failed:", tokenRes.status);
-      return res.status(500).json({ 
-        error: "Token generation failed after valid login" 
+    if (!process.env.TS_TRUSTED_AUTH_SECRET) {
+      console.error("Trusted Auth secret missing");
+      return res.status(500).json({
+        error: "Server authentication not configured",
       });
     }
+    
+    const TS_SECRET = process.env.TS_TRUSTED_AUTH_SECRET;
 
-    const tokenData = await tokenRes.json();
-    console.log("Auth token generated successfully");
+    try {
+      console.log("Validating credentials for:", email);
+      
+      // Step 1: Validate credentials with ThoughtSpot's real login API
+      const loginRes = await fetch(`${TS_HOST}/api/rest/2.0/auth/session/login`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({ 
+          username: email, 
+          password,
+          remember_me: false 
+        }),
+      });
 
-    res.json({ authToken: tokenData.token });
-  } catch (err) {
-    console.error("Auth error:", err);
-    res.status(500).json({ error: "Authentication service unavailable" });
+      if (!loginRes.ok) {
+        console.log("ThoughtSpot login failed:", loginRes.status);
+        return res.status(401).json({ 
+          error: "Invalid ThoughtSpot credentials" 
+        });
+      }
+
+      console.log("Credentials valid, generating trusted token");
+
+      // Step 2: Generate trusted auth token
+      const tokenRes = await fetch(`${TS_HOST}/api/rest/2.0/auth/token/full`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({
+          username: email,
+          secret_key: TS_SECRET,
+          validity_time_in_sec: 300,
+        }),
+      });
+
+      if (!tokenRes.ok) {
+        console.error("Trusted token generation failed:", tokenRes.status);
+        return res.status(500).json({ 
+          error: "Token generation failed after valid login" 
+        });
+      }
+
+      const tokenData = await tokenRes.json();
+      console.log("Auth token generated successfully");
+
+      res.json({ authToken: tokenData.token });
+    } catch (err) {
+      console.error("Auth error:", err);
+      res.status(500).json({ error: "Authentication service unavailable" });
+    }
+  } 
+  // LOGOUT endpoint
+  else if (req.method === 'POST' && req.url.includes('/logout')) {
+    res.status(200).json({ success: true });
   }
-});
-
-/**
- * LOGOUT (optional — app-level logout)
- */
-app.post("/auth/logout", (_req, res) => {
-  res.status(200).json({ success: true });
-});
-
-/**
- * IMPORTANT
- * Export app for Vercel (NO app.listen)
- */
-export default app;
+  // Invalid method
+  else {
+    res.status(405).json({ error: 'Method not allowed' });
+  }
+}
