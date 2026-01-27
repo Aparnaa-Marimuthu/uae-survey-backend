@@ -1,4 +1,3 @@
-// api/Auth.js
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -8,10 +7,18 @@ const allowedOrigins = [
 ];
 
 function setCorsHeaders(req, res) {
+  console.log("----- INCOMING REQUEST -----");
+  console.log("Method:", req.method);
+  console.log("URL:", req.url);
+  console.log("Origin:", req.headers.origin);
+  console.log("Headers:", req.headers);
+  console.log("Env TS_HOST:", process.env.TS_HOST ? "SET" : "MISSING");
+  console.log("Env TS_SECRET:", process.env.TS_TRUSTED_AUTH_SECRET ? "SET" : "MISSING");
   const origin = req.headers.origin;
   if (origin && allowedOrigins.includes(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
   }
+  console.log("CORS headers set");
   // required when frontend sends cookies/credentials
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader(
@@ -26,8 +33,11 @@ export default async function handler(req, res) {
 
   // Handle preflight
   if (req.method === "OPTIONS") {
+    console.log("Handling CORS preflight (OPTIONS)");
     return res.status(200).end();
   }
+
+  console.log("Handling POST /auth/login");
 
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST, OPTIONS");
