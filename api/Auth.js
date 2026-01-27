@@ -6,21 +6,14 @@ dotenv.config();
 
 const app = express();
 
-// 1. EXPLICIT PREFLIGHT HANDLER - Fixes Vercel serverless OPTIONS issue
-app.options("*", cors({
-  origin: [
-    "http://localhost:5173",
-    "https://uae-survey.vercel.app"
-  ],
-  credentials: true,
-}));
-
-// 2. GLOBAL CORS - Unchanged
+/**
+ * CORS — MUST be explicit when using credentials
+ */
 app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://uae-survey.vercel.app"
+      "https://uae-survey.vercel.app",
     ],
     credentials: true,
   })
@@ -28,32 +21,10 @@ app.use(
 
 app.use(express.json());
 
-// 3. LOG ALL REQUESTS
-app.use((req, res, next) => {
-  console.log("🔥 Express hit:", req.method, req.url);
-  next();
-});
-
-// 4. RESPONSE INTERCEPTOR - Ensures CORS headers on ALL responses (incl. errors)
-app.use((req, res, next) => {
-  res.on('finish', () => {
-    const origin = req.headers.origin;
-    if (origin && [
-      "http://localhost:5173",
-      "https://uae-survey.vercel.app"
-    ].includes(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-    }
-  });
-  next();
-});
-
-// Your existing routes - UNCHANGED
-app.get("/health", async (req, res) => {
-  res.send("API is running...");
-});
-
+/**
+ * LOGIN
+ * Generates ThoughtSpot Trusted Auth token
+ */
 app.post("/auth/login", async (req, res) => {
   const { username, password } = req.body;
   
@@ -135,6 +106,9 @@ app.post("/auth/login", async (req, res) => {
   }
 });
 
+/**
+ * LOGOUT (optional — app-level logout)
+ */
 app.post("/auth/logout", (_req, res) => {
   res.status(200).json({ success: true });
 });
@@ -146,4 +120,8 @@ if (process.env.NODE_ENV !== "production") {
   });
 }
 
+/**
+ * IMPORTANT
+ * Export app for Vercel (NO app.listen)
+ */
 export default app;
