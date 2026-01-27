@@ -1,4 +1,6 @@
 import dotenv from "dotenv";
+import cors from "cors";
+
 dotenv.config();
 
 const allowedOrigins = [
@@ -6,34 +8,34 @@ const allowedOrigins = [
   "https://uae-survey.vercel.app",
 ];
 
-function setCorsHeaders(req, res) {
-  console.log("----- INCOMING REQUEST -----");
-  console.log("Method:", req.method);
-  console.log("URL:", req.url);
-  console.log("Origin:", req.headers.origin);
-  console.log("Headers:", req.headers);
-  console.log("Env TS_HOST:", process.env.TS_HOST ? "SET" : "MISSING");
-  console.log("Env TS_SECRET:", process.env.TS_TRUSTED_AUTH_SECRET ? "SET" : "MISSING");
-  const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  }
-  console.log("CORS headers set");
-  // required when frontend sends cookies/credentials
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization"
-  );
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+};
+
+function runMiddleware(req, res, fn) {
+  return new Promise((resolve, reject) => {
+    fn(req, res, (result) => {
+      if (result instanceof Error) {
+        return reject(result);
+      }
+      return resolve(result);
+    });
+  });
 }
 
 export default async function handler(req, res) {
-  setCorsHeaders(req, res);
+  res.setHeader("Vary", "Origin");
 
-  // Handle preflight
+  await runMiddleware(req, res, cors(corsOptions));
+
   if (req.method === "OPTIONS") {
-    console.log("Handling CORS preflight (OPTIONS)");
     return res.status(200).end();
   }
 
