@@ -24,6 +24,10 @@ app.use(express.json());
  * LOGIN
  * Generates ThoughtSpot Trusted Auth token
  */
+app.get("/", async (req, res) => {
+  res.send("API is running...");
+});
+
 app.post("/auth/login", async (req, res) => {
   const { username, password } = req.body;
   
