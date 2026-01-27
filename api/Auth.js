@@ -11,20 +11,22 @@ const app = express();
  */
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://uae-survey.vercel.app",
-    ],
+    origin: "https://uae-survey.vercel.app",
     credentials: true,
   })
 );
-
+app.options("*", cors());
 app.use(express.json());
 
 /**
  * LOGIN
  * Generates ThoughtSpot Trusted Auth token
  */
+app.use((req, res, next) => {
+  res.setHeader("Content-Type", "application/json");
+  next();
+});
+
 app.post("/auth/login", async (req, res) => {
   const { username, password } = req.body;
   
