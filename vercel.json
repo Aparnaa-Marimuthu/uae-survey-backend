@@ -1,7 +1,7 @@
 {
   "headers": [
     {
-      "source": "/api/Auth(.*)",
+      "source": "/api/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Credentials", "value": "true" },
         { "key": "Access-Control-Allow-Origin", "value": "https://uae-survey.vercel.app" },
